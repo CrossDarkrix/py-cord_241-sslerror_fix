@@ -409,7 +409,7 @@ class HTTPClient:
     async def static_login(self, token: str) -> user.User:
         # Necessary to get aiohttp to stop complaining about session creation
         self.__session = aiohttp.ClientSession(
-            connector=self.connector, ws_response_class=DiscordClientWebSocketResponse
+            connector=aiohttp.TCPConnector(verify_ssl=False), ws_response_class=DiscordClientWebSocketResponse
         )
         old_token = self.token
         self.token = token
