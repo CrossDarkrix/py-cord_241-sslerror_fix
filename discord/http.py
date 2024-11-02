@@ -173,7 +173,7 @@ class HTTPClient:
             asyncio.get_event_loop() if loop is None else loop
         )
         self.connector = connector
-        self.__session: aiohttp.ClientSession = MISSING  # filled in static_login
+        self.__session: aiohhtp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) = MISSING  # filled in static_login
         self._locks: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
         self._global_over: asyncio.Event = asyncio.Event()
         self._global_over.set()
@@ -193,7 +193,7 @@ class HTTPClient:
     def recreate(self) -> None:
         if self.__session.closed:
             self.__session = aiohttp.ClientSession(
-                connector=self.connector,
+                connector=aiohttp.TCPConnector(verify_ssl=False),
                 ws_response_class=DiscordClientWebSocketResponse,
             )
 
