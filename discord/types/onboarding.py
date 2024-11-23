@@ -1,7 +1,6 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2015-2021 Rapptz
 Copyright (c) 2021-present Pycord Development
 
 Permission is hereby granted, free of charge, to any person obtaining a
@@ -25,39 +24,41 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from .._typed_dict import NotRequired, TypedDict
-from .activity import Activity
-from .snowflake import Snowflake
-from .user import User
+from typing import Literal, TypedDict
+
+from .._typed_dict import NotRequired
+from .emoji import Emoji
+from .snowflake import Snowflake, SnowflakeList
+
+PromptType = Literal[0, 1]
+OnboardingMode = Literal[0, 1]
 
 
-class WidgetChannel(TypedDict):
-    id: Snowflake
-    name: str
-    position: int
-
-
-class WidgetMember(User, total=False):
-    nick: str
-    game: Activity
-    status: str
-    avatar_url: str
-    deaf: bool
-    self_deaf: bool
-    mute: bool
-    self_mute: bool
-    suppress: bool
-
-
-class Widget(TypedDict):
-    channels: NotRequired[list[WidgetChannel]]
-    members: NotRequired[list[WidgetMember]]
-    presence_count: NotRequired[int]
-    id: Snowflake
-    name: str
-    instant_invite: str
-
-
-class WidgetSettings(TypedDict):
+class Onboarding(TypedDict):
+    guild_id: Snowflake
+    prompts: list[OnboardingPrompt]
+    default_channel_ids: SnowflakeList
     enabled: bool
-    channel_id: Snowflake | None
+    mode: OnboardingMode
+
+
+class OnboardingPrompt(TypedDict):
+    id: Snowflake
+    type: PromptType
+    options: list[PromptOption]
+    title: str
+    single_select: bool
+    required: bool
+    in_onboarding: bool
+
+
+class PromptOption(TypedDict):
+    id: Snowflake
+    channel_ids: SnowflakeList
+    role_ids: SnowflakeList
+    emoji: NotRequired[Emoji]
+    emoji_id: NotRequired[Snowflake]
+    emoji_name: NotRequired[str]
+    emoji_animated: NotRequired[bool]
+    title: str
+    description: NotRequired[str]

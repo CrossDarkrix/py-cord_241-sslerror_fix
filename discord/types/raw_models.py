@@ -22,6 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+
 from __future__ import annotations
 
 from .._typed_dict import NotRequired, TypedDict
@@ -62,6 +63,9 @@ class ReactionActionEvent(_ReactionEventOptional):
     channel_id: Snowflake
     message_id: Snowflake
     emoji: PartialEmoji
+    burst: bool
+    burst_colors: list
+    type: int
 
 
 class ReactionClearEvent(_ReactionEventOptional):
@@ -73,6 +77,9 @@ class ReactionClearEmojiEvent(_ReactionEventOptional):
     channel_id: int
     message_id: int
     emoji: PartialEmoji
+    burst: bool
+    burst_colors: list
+    type: int
 
 
 class IntegrationDeleteEvent(TypedDict):
@@ -124,9 +131,26 @@ class MemberRemoveEvent(TypedDict):
     user: User
 
 
+class VoiceChannelStatusUpdateEvent(TypedDict):
+    id: Snowflake
+    guild_id: Snowflake
+    status: NotRequired[str]
+
+
 class ThreadMembersUpdateEvent(TypedDict):
     id: Snowflake
     guild_id: Snowflake
     member_count: int
     added_members: NotRequired[list[ThreadMember]]
     removed_member_ids: NotRequired[list[Snowflake]]
+
+
+class AuditLogEntryEvent(TypedDict):
+    id: Snowflake
+    user_id: NotRequired[Snowflake]
+    guild_id: Snowflake
+    target_id: NotRequired[Snowflake]
+    action_type: int
+    changes: NotRequired[list[dict]]
+    reason: NotRequired[str]
+    options: NotRequired[dict]

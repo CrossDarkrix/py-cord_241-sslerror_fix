@@ -50,6 +50,7 @@ from .flags import MessageFlags
 from .invite import Invite
 from .iterators import HistoryIterator
 from .mentions import AllowedMentions
+from .partial_emoji import PartialEmoji, _EmojiTag
 from .permissions import PermissionOverwrite, Permissions
 from .role import Role
 from .scheduled_events import ScheduledEvent
@@ -77,6 +78,7 @@ if TYPE_CHECKING:
         DMChannel,
         GroupChannel,
         PartialMessageable,
+        StageChannel,
         TextChannel,
         VoiceChannel,
     )
@@ -97,7 +99,7 @@ if TYPE_CHECKING:
     from .user import ClientUser
 
     PartialMessageableChannel = Union[
-        TextChannel, VoiceChannel, Thread, DMChannel, PartialMessageable
+        TextChannel, VoiceChannel, StageChannel, Thread, DMChannel, PartialMessageable
     ]
     MessageableChannel = Union[PartialMessageableChannel, GroupChannel]
     SnowflakeTime = Union["Snowflake", datetime]
@@ -214,6 +216,14 @@ class User(Snowflake, Protocol):
         The user's username.
     discriminator: :class:`str`
         The user's discriminator.
+
+        .. note::
+
+            If the user has migrated to the new username system, this will always be "0".
+    global_name: :class:`str`
+        The user's global name.
+
+        .. versionadded:: 2.5
     avatar: :class:`~discord.Asset`
         The avatar asset the user has.
     bot: :class:`bool`
@@ -224,6 +234,7 @@ class User(Snowflake, Protocol):
 
     name: str
     discriminator: str
+    global_name: str | None
     avatar: Asset
     bot: bool
 
@@ -330,8 +341,7 @@ class GuildChannel:
 
         def __init__(
             self, *, state: ConnectionState, guild: Guild, data: dict[str, Any]
-        ):
-            ...
+        ): ...
 
     def __str__(self) -> str:
         return self.name
@@ -496,6 +506,28 @@ class GuildChannel:
             if not isinstance(ch_type, ChannelType):
                 raise InvalidArgument("type field must be of type ChannelType")
             options["type"] = ch_type.value
+
+        try:
+            default_reaction_emoji = options["default_reaction_emoji"]
+        except KeyError:
+            pass
+        else:
+            if isinstance(default_reaction_emoji, _EmojiTag):  # Emoji, PartialEmoji
+                default_reaction_emoji = default_reaction_emoji._to_partial()
+            elif isinstance(default_reaction_emoji, int):
+                default_reaction_emoji = PartialEmoji(
+                    name=None, id=default_reaction_emoji
+                )
+            elif isinstance(default_reaction_emoji, str):
+                default_reaction_emoji = PartialEmoji.from_str(default_reaction_emoji)
+            else:
+                raise InvalidArgument(
+                    "default_reaction_emoji must be of type: Emoji | int | str"
+                )
+
+            options["default_reaction_emoji"] = (
+                default_reaction_emoji._to_forum_reaction_payload()
+            )
 
         if options:
             return await self._state.http.edit_channel(
@@ -702,7 +734,7 @@ class GuildChannel:
             return Permissions.all()
 
         default = self.guild.default_role
-        base = Permissions(default.permissions.value)
+        base = Permissions(default.permissions.value if default else 0)
 
         # Handle the role case first
         if isinstance(obj, Role):
@@ -820,8 +852,7 @@ class GuildChannel:
         *,
         overwrite: PermissionOverwrite | None = ...,
         reason: str | None = ...,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     async def set_permissions(
@@ -830,8 +861,7 @@ class GuildChannel:
         *,
         reason: str | None = ...,
         **permissions: bool,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     async def set_permissions(
         self, target, *, overwrite=MISSING, reason=None, **permissions
@@ -1000,8 +1030,7 @@ class GuildChannel:
         category: Snowflake | None = MISSING,
         sync_permissions: bool = MISSING,
         reason: str | None = MISSING,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     async def move(
@@ -1012,8 +1041,7 @@ class GuildChannel:
         category: Snowflake | None = MISSING,
         sync_permissions: bool = MISSING,
         reason: str = MISSING,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     async def move(
@@ -1024,8 +1052,7 @@ class GuildChannel:
         category: Snowflake | None = MISSING,
         sync_permissions: bool = MISSING,
         reason: str = MISSING,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     async def move(
@@ -1036,8 +1063,7 @@ class GuildChannel:
         category: Snowflake | None = MISSING,
         sync_permissions: bool = MISSING,
         reason: str = MISSING,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     async def move(self, **kwargs) -> None:
         """|coro|
@@ -1292,6 +1318,8 @@ class Messageable:
     The following implement this ABC:
 
     - :class:`~discord.TextChannel`
+    - :class:`~discord.VoiceChannel`
+    - :class:`~discord.StageChannel`
     - :class:`~discord.DMChannel`
     - :class:`~discord.GroupChannel`
     - :class:`~discord.User`
@@ -1318,14 +1346,14 @@ class Messageable:
         stickers: Sequence[GuildSticker | StickerItem] = ...,
         delete_after: float = ...,
         nonce: str | int = ...,
+        enforce_nonce: bool = ...,
         allowed_mentions: AllowedMentions = ...,
         reference: Message | MessageReference | PartialMessage = ...,
         mention_author: bool = ...,
         view: View = ...,
         suppress: bool = ...,
         silent: bool = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     @overload
     async def send(
@@ -1338,14 +1366,14 @@ class Messageable:
         stickers: Sequence[GuildSticker | StickerItem] = ...,
         delete_after: float = ...,
         nonce: str | int = ...,
+        enforce_nonce: bool = ...,
         allowed_mentions: AllowedMentions = ...,
         reference: Message | MessageReference | PartialMessage = ...,
         mention_author: bool = ...,
         view: View = ...,
         suppress: bool = ...,
         silent: bool = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     @overload
     async def send(
@@ -1358,14 +1386,14 @@ class Messageable:
         stickers: Sequence[GuildSticker | StickerItem] = ...,
         delete_after: float = ...,
         nonce: str | int = ...,
+        enforce_nonce: bool = ...,
         allowed_mentions: AllowedMentions = ...,
         reference: Message | MessageReference | PartialMessage = ...,
         mention_author: bool = ...,
         view: View = ...,
         suppress: bool = ...,
         silent: bool = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     @overload
     async def send(
@@ -1378,14 +1406,14 @@ class Messageable:
         stickers: Sequence[GuildSticker | StickerItem] = ...,
         delete_after: float = ...,
         nonce: str | int = ...,
+        enforce_nonce: bool = ...,
         allowed_mentions: AllowedMentions = ...,
         reference: Message | MessageReference | PartialMessage = ...,
         mention_author: bool = ...,
         view: View = ...,
         suppress: bool = ...,
         silent: bool = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     async def send(
         self,
@@ -1399,6 +1427,7 @@ class Messageable:
         stickers=None,
         delete_after=None,
         nonce=None,
+        enforce_nonce=None,
         allowed_mentions=None,
         reference=None,
         mention_author=None,
@@ -1439,6 +1468,10 @@ class Messageable:
         nonce: :class:`int`
             The nonce to use for sending this message. If the message was successfully sent,
             then the message will have a nonce with this value.
+        enforce_nonce: Optional[:class:`bool`]
+            Whether :attr:`nonce` is enforced to be validated.
+
+            .. versionadded:: 2.5
         delete_after: :class:`float`
             If provided, the number of seconds to wait in the background
             before deleting the message we just sent. If the deletion fails,
@@ -1478,7 +1511,7 @@ class Messageable:
             .. versionadded:: 2.0
         suppress: :class:`bool`
             Whether to suppress embeds for the message.
-        slient: :class:`bool`
+        silent: :class:`bool`
             Whether to suppress push and desktop notifications for the message.
 
             .. versionadded:: 2.4
@@ -1578,6 +1611,7 @@ class Messageable:
                     embed=embed,
                     embeds=embeds,
                     nonce=nonce,
+                    enforce_nonce=nonce,
                     message_reference=reference,
                     stickers=stickers,
                     components=components,
@@ -1603,6 +1637,7 @@ class Messageable:
                     embed=embed,
                     embeds=embeds,
                     nonce=nonce,
+                    enforce_nonce=nonce,
                     allowed_mentions=allowed_mentions,
                     message_reference=reference,
                     stickers=stickers,
@@ -1620,6 +1655,7 @@ class Messageable:
                 embed=embed,
                 embeds=embeds,
                 nonce=nonce,
+                enforce_nonce=nonce,
                 allowed_mentions=allowed_mentions,
                 message_reference=reference,
                 stickers=stickers,

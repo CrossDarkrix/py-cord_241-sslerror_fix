@@ -22,6 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+
 from __future__ import annotations
 
 from typing import Literal, TypedDict
@@ -33,10 +34,11 @@ class PartialUser(TypedDict):
     id: Snowflake
     username: str
     discriminator: str
+    global_name: str | None
     avatar: str | None
 
 
-PremiumType = Literal[0, 1, 2]
+PremiumType = Literal[0, 1, 2, 3]
 
 
 class User(PartialUser, total=False):

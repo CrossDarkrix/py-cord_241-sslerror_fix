@@ -22,6 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -201,9 +202,9 @@ class CogMeta(type):
                     commands[f"app_{elem}"] = value.slash_variant
                     commands[elem] = value
                     for cmd in getattr(value, "subcommands", []):
-                        commands[
-                            f"ext_{cmd.ext_variant.qualified_name}"
-                        ] = cmd.ext_variant
+                        commands[f"ext_{cmd.ext_variant.qualified_name}"] = (
+                            cmd.ext_variant
+                        )
 
                 if inspect.iscoroutinefunction(value):
                     try:
@@ -586,7 +587,10 @@ class Cog(metaclass=CogMeta):
 
         try:
             for command in self.__cog_commands__:
-                if isinstance(command, ApplicationCommand):
+                if hasattr(command, "add_to"):
+                    bot.bridge_commands.remove(command)
+                    continue
+                elif isinstance(command, ApplicationCommand):
                     bot.remove_application_command(command)
                 elif command.parent is None:
                     bot.remove_command(command.name)
@@ -735,7 +739,7 @@ class CogMixin:
                 self.remove_application_command(cmd)
 
         # remove all the listeners from the module
-        for event_list in self.extra_events.copy().values():
+        for event_list in self._event_handlers.copy().values():
             remove = [
                 index
                 for index, event in enumerate(event_list)
@@ -805,8 +809,7 @@ class CogMixin:
         *,
         package: str | None = None,
         recursive: bool = False,
-    ) -> list[str]:
-        ...
+    ) -> list[str]: ...
 
     @overload
     def load_extension(
@@ -816,8 +819,7 @@ class CogMixin:
         package: str | None = None,
         recursive: bool = False,
         store: bool = False,
-    ) -> dict[str, Exception | bool] | list[str] | None:
-        ...
+    ) -> dict[str, Exception | bool] | list[str] | None: ...
 
     def load_extension(
         self, name, *, package=None, recursive=False, store=False
@@ -938,8 +940,7 @@ class CogMixin:
         *names: str,
         package: str | None = None,
         recursive: bool = False,
-    ) -> list[str]:
-        ...
+    ) -> list[str]: ...
 
     @overload
     def load_extensions(
@@ -948,8 +949,7 @@ class CogMixin:
         package: str | None = None,
         recursive: bool = False,
         store: bool = False,
-    ) -> dict[str, Exception | bool] | list[str] | None:
-        ...
+    ) -> dict[str, Exception | bool] | list[str] | None: ...
 
     def load_extensions(
         self, *names, package=None, recursive=False, store=False
